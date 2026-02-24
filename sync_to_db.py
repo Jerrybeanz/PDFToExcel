@@ -23,7 +23,6 @@ def sync_to_db(excel_path=None, database_path=None):
         if table_name in excel_file:
             with sqlite3.connect(database_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA foreign_keys = ON;")
                 cursor.execute(f'DELETE FROM "{table_name}";')
                 conn.commit()
 
@@ -31,6 +30,7 @@ def sync_to_db(excel_path=None, database_path=None):
         if table_name in excel_file:
             table = master_list_tables[table_name]
             df = excel_file[table_name]
+            print(df)
             upsert_from_table(table, df, database_path)
 
 

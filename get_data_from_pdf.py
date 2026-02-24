@@ -41,22 +41,28 @@ def get_data_from_pdf():
 
         # Create new sheet and table
         if not found_table:
-            sheet = wb.sheets.add(table_name)
+            if table_name not in wb.sheets:
+                sheet = wb.sheets.add(table_name)
+            else:
+                sheet = wb.sheets[table_name]
+
+            sheet.clear()
             sheet.range('A1').options(index=False).value = df
 
             # Convert to Excel table
             last_cell = sheet.range('A1').expand('table').last_cell
-            table_range = f'A1:{last_cell.address}'
+            table_range = sheet.range(f'A1:{last_cell.address}')
 
             # Create the table
-            new_table = sheet.api.ListObjects.Add(1,  # xlSrcRange
-                                      sheet.range(table_range).api,
+            new_table = sheet.api.ListObjects.Add(
+                                      1,  # xlSrcRange
+                                      table_range.api,
                                       None,  # Source
                                       1)  # xlYes (headers)
             new_table.Name = table_name
 
             # Autofit columns
-            sheet.range('A1').expand('table').columns.autofit()
+            table_range.autofit()
 
 
 if __name__ == "__main__":

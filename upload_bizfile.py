@@ -42,9 +42,9 @@ def upload_bizfile(excel_path=None, database_path=None):
                 business_profile_parser.parse(pdf)
 
     # Update in database
-    upsert_from_table(companies_table, pd.DataFrame(companies_table.table), database_path)
-    upsert_from_table(people_table, pd.DataFrame(people_table.table), database_path)
-    upsert_from_table(positions_table, pd.DataFrame(positions_table.table), database_path)
+    upsert_from_table(companies_table, pd.DataFrame(companies_table.table, columns=companies_table.headers), database_path)
+    upsert_from_table(people_table, pd.DataFrame(people_table.table, columns=people_table.headers), database_path)
+    upsert_from_table(positions_table, pd.DataFrame(positions_table.table, columns=positions_table.headers), database_path)
 
     # Pull changes in database to Excel
     get_data_from_db(database_path=database_path)
