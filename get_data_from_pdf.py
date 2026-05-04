@@ -20,14 +20,14 @@ def get_data_from_pdf():
 
     tables = parse_pdf()
 
-    for table_name, table in tables.items():
-        df = pd.DataFrame(table[1:], columns=table[0])
+    for table in tables:
+        df = pd.DataFrame(table.rows, columns=table.headers)
         found_table = False
 
         for sheet in wb.sheets:
             # Append to existing table
-            if table_name in sheet.tables:
-                table_range = sheet.tables[table_name].range
+            if table.name in sheet.tables:
+                table_range = sheet.tables[table.name].range
 
                 last_row = table_range.last_cell.row
                 start_cell = sheet.range(f"A{last_row + 1}")
@@ -41,10 +41,10 @@ def get_data_from_pdf():
 
         # Create new sheet and table
         if not found_table:
-            if table_name not in wb.sheets:
-                sheet = wb.sheets.add(table_name)
+            if table.name not in wb.sheets:
+                sheet = wb.sheets.add(table.name)
             else:
-                sheet = wb.sheets[table_name]
+                sheet = wb.sheets[table.name]
 
             sheet.clear()
             sheet.range('A1').options(index=False).value = df
@@ -59,7 +59,7 @@ def get_data_from_pdf():
                                       table_range.api,
                                       None,  # Source
                                       1)  # xlYes (headers)
-            new_table.Name = table_name
+            new_table.Name = table.name
 
             # Autofit columns
             table_range.autofit()
