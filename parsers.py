@@ -60,6 +60,7 @@ class OCBCParser(Parser):
     tables = [ocbc_table]
     period_pattern = re.compile(r'\d{1}\s*[A-Z]{3}\s*\d{4} TO \d{2}\s*[A-Z]{3}\s*\d{4}')  # E.g. 1 DEC 2024 TO 31 DEC 2024
     row_start_pattern = re.compile(r'\d{2}\s*[A-Z]{3}\s*\d{2}\s*[A-Z]{3}')  # E.g. 01 DEC 02 DEC
+    number_pattern = re.compile(r'(\d{1,3},)?(\d{3},)*\d{1,3}\.\d{2}')  # E.g. 5,500,500.00
 
     @classmethod
     def parse(cls, pdf):
@@ -94,6 +95,10 @@ class OCBCParser(Parser):
                         cls.ocbc_table.rows.append(current_transaction)
 
                     data = line.split(' ')
+
+                    # Skip invalid data at the back
+                    while data and not cls.number_pattern.fullmatch(data[-1]):
+                        data.pop()
 
                     transaction_date = pd.to_datetime(data[0] + ' ' + data[1] + f" {year}", format = '%d %b %Y')
                     value_date = pd.to_datetime(data[2] + ' ' + data[3] + f" {year}", format = '%d %b %Y')
@@ -130,12 +135,15 @@ class OCBCParser(Parser):
                 elif current_transaction:
                     current_transaction[2] += ' ' + line
 
+        cls.ocbc_table.rows.sort(key=lambda row: row[0])  # Sort by date
+
 
 class DBSParser(Parser):
     file_header = "DBS Bank"
     dbs_table = Table("DBS", ["Transaction Date", "Value Date", "Transaction Details", "Withdrawal", "Deposit", "Balance"])
     tables = [dbs_table]
     row_start_pattern = re.compile(r'\d{2}-[A-Z][a-z]{2}-\d{2}\s*\d{2}-[A-Z][a-z]{2}-\d{2}')  # E.g. 06-Jan-25 06-Jan-25
+    number_pattern = re.compile(r'(\d{1,3},)?(\d{3},)*\d{1,3}\.\d{2}')  # E.g. 5,500,500.00
 
     @classmethod
     def parse(cls, pdf):
@@ -161,6 +169,10 @@ class DBSParser(Parser):
 
                     data = line.split(' ')
 
+                    # Skip invalid data at the back
+                    while data and not cls.number_pattern.fullmatch(data[-1]):
+                        data.pop()
+
                     transaction_date = pd.to_datetime(data[0], format="%d-%b-%y")
                     value_date = pd.to_datetime(data[1], format="%d-%b-%y")
 
@@ -181,7 +193,7 @@ class DBSParser(Parser):
                     prev_balance = balance
 
                 # End of page
-                elif line == "3-0810058-RM":
+                elif line == "3-0810058-RM" or line == "DBS Bank Ltd":
                     if current_transaction is not None:
                         cls.dbs_table.rows.append(current_transaction)
                     current_transaction = None
@@ -197,6 +209,8 @@ class DBSParser(Parser):
                 # Continuation of previous transaction, add to description
                 elif current_transaction:
                     current_transaction[2] += ' ' + line
+
+        cls.dbs_table.rows.sort(key=lambda row: row[0]) # Sort by date
 
 
 class AspireParser(Parser):

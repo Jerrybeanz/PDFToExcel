@@ -40,4 +40,4 @@ def parse_pdf():
 
 
 if __name__ == '__main__':
-    print(float("0.00"))
+    parse_pdf()
