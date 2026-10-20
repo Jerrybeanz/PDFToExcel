@@ -54,6 +54,52 @@ def to_float(x):
     return float(x.replace(',', ''))
 
 
+class AspireParser(Parser):
+    file_header = "Aspire FT Pte. Ltd."
+    aspire_table = Table("Aspire", ["Date & time", "Counterparty", "Description", "Debit (SGD)", "Credit (SGD)", "Balance (SGD)"])
+    tables = [aspire_table]
+
+    @classmethod
+    def parse(cls, pdf):
+        row_start_pattern = re.compile(r'\d*\s*\d{2}\s*[A-Z][a-z]{2}\s*\d{4}') # E.g. 1 01 Jan 2025 (Row number followed by date)
+        date_pattern = re.compile(r'\d{2}\s*[A-Z][a-z]{2}\s*\d{4}') # E.g. 01 Jan 2025
+        number_pattern = re.compile(r'(\d{1,3},)?(\d{3},)*\d{1,3}\.\d{2}') # E.g. 5,500,500.00
+        start = False # Skip through headers
+
+        for page in pdf.pages:
+            text = page.extract_text()
+            lines = text.split('\n')
+
+            for line in lines:
+                if not start:
+                    # Start of transactions
+                    if line.startswith("# Date & time"):
+                        start = True
+                    else:
+                        continue
+
+                if row_start_pattern.match(line):
+                    date_match = date_pattern.search(line)
+                    date = line[date_match.start():date_match.end()]
+                    first_number_match = number_pattern.search(line)
+                    counterparty = line[date_match.end():first_number_match.start()]
+                    first_number = line[first_number_match.start():first_number_match.end()]
+
+                    # Means first number is Debit, Credit is empty.
+                    if '-' in line[first_number_match.end():]:
+                        debit = first_number
+                        credit = 0
+                    else:
+                        debit = 0
+                        credit = first_number
+
+                    second_number_match = number_pattern.search(line[first_number_match.end():])
+                    second_number = line[second_number_match.start() + first_number_match.end():second_number_match.end() + first_number_match.end()]
+
+                    row = [date, counterparty, "", debit, credit, second_number]
+                    cls.aspire_table.rows.append(row)
+
+
 class OCBCParser(Parser):
     file_header = "OCBC Bank"
     ocbc_table = Table("OCBC", ["Transaction Date", "Value Date", "Description", "Cheque", "Withdrawal", "Deposit", "Balance"])
@@ -139,7 +185,7 @@ class OCBCParser(Parser):
 
 
 class DBSParser(Parser):
-    file_header = "DBS Bank"
+    file_header = "DBS Bank Ltd"
     dbs_table = Table("DBS", ["Transaction Date", "Value Date", "Transaction Details", "Withdrawal", "Deposit", "Balance"])
     tables = [dbs_table]
     row_start_pattern = re.compile(r'\d{2}-[A-Z][a-z]{2}-\d{2}\s*\d{2}-[A-Z][a-z]{2}-\d{2}')  # E.g. 06-Jan-25 06-Jan-25
@@ -213,57 +259,11 @@ class DBSParser(Parser):
         cls.dbs_table.rows.sort(key=lambda row: row[0]) # Sort by date
 
 
-class AspireParser(Parser):
-    file_header = "Aspire"
-    aspire_table = Table("Aspire", ["Date & time", "Counterparty", "Description", "Debit (SGD)", "Credit (SGD)", "Balance (SGD)"])
-    tables = [aspire_table]
-
-    @classmethod
-    def parse(cls, pdf):
-        row_start_pattern = re.compile(r'\d*\s*\d{2}\s*[A-Z][a-z]{2}\s*\d{4}') # E.g. 1 01 Jan 2025 (Row number followed by date)
-        date_pattern = re.compile(r'\d{2}\s*[A-Z][a-z]{2}\s*\d{4}') # E.g. 01 Jan 2025
-        number_pattern = re.compile(r'(\d{1,3},)?(\d{3},)*\d{1,3}\.\d{2}') # E.g. 5,500,500.00
-        start = False # Skip through headers
-
-        for page in pdf.pages:
-            text = page.extract_text()
-            lines = text.split('\n')
-
-            for line in lines:
-                if not start:
-                    # Start of transactions
-                    if line.startswith("# Date & time"):
-                        start = True
-                    else:
-                        continue
-
-                if row_start_pattern.match(line):
-                    date_match = date_pattern.search(line)
-                    date = line[date_match.start():date_match.end()]
-                    first_number_match = number_pattern.search(line)
-                    counterparty = line[date_match.end():first_number_match.start()]
-                    first_number = line[first_number_match.start():first_number_match.end()]
-
-                    # Means first number is Debit, Credit is empty.
-                    if '-' in line[first_number_match.end():]:
-                        debit = first_number
-                        credit = 0
-                    else:
-                        debit = 0
-                        credit = first_number
-
-                    second_number_match = number_pattern.search(line[first_number_match.end():])
-                    second_number = line[second_number_match.start() + first_number_match.end():second_number_match.end() + first_number_match.end()]
-
-                    row = [date, counterparty, "", debit, credit, second_number]
-                    cls.aspire_table.rows.append(row)
-
-
 class CPFEzPayParser(Parser):
     file_header = ("CPF EZPay", "View Employer Submission") # There are actually 2 very similar pdf files for CPF EzPay, one starting with "CPF EzPay" and the other "View Employer Submission"
-    summary_table = Table("CPF_Summary", ["Month", "Total CPF Contributions", "CPF Late Payment Interest", "Skills Development Levy (SDL)", "Donation to Community Chest",
+    summary_table = Table("CPF EzPay Summary", ["Month", "Total CPF Contributions", "CPF Late Payment Interest", "Skills Development Levy (SDL)", "Donation to Community Chest",
                                           "Total MBMF Contributions", "Total SINDA Contributions", "Total CDAC Contributions", "Total ECF Contributions", "Grand Total"])
-    cpf_table = Table("CPF", ["Month", "NRIC", "Employee Name", "Total CPF", "SDL", "Employer CPF", "Employee CPF", "Ordinary Wages", "Additional Wages", "Agency", "Agency Fund"])
+    cpf_table = Table("CPF EzPay", ["Month", "NRIC", "Employee Name", "Total CPF", "SDL", "Employer CPF", "Employee CPF", "Ordinary Wages", "Additional Wages", "Agency", "Agency Fund"])
     tables = [summary_table, cpf_table]
     row_start_pattern = re.compile(r'\d+.\s*[A-Z]{1}\d{7}[A-Z]{1}')  # E.g. 1. T0534907E
     month_pattern = re.compile(r'[A-Z]{3}\s*\d{4}')  # E.g. JAN 2026
@@ -390,8 +390,8 @@ class CPFEzPayParser(Parser):
 
 class CPFROPParser(Parser):
     file_header = "RECORD OF PAYMENT"
-    summary_table = Table("CPF_Summary", ["Month", "CPF", "Late Payment Interest", "SDL", "MBMF", "SINDA", "CDAC", "Total"])
-    cpf_table = Table("CPF", ["Month", "Name", "NRIC", "CPF"])
+    summary_table = Table("CPF ROP Summary", ["Month", "CPF", "Late Payment Interest", "SDL", "MBMF", "SINDA", "CDAC", "Total"])
+    cpf_table = Table("CPF ROP", ["Month", "Name", "NRIC", "CPF"])
     tables = [summary_table, cpf_table]
     row_start_pattern = re.compile(r'[A-Z]X{4}\d{3}[A-Z]') # E.g. SXXXX482J, we use NRIC pattern to find row for a record
     month_pattern = re.compile(r'[A-Z]{3}\s*\d{4}')  # E.g. JAN 2026

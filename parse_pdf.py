@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog as fd
 import pdfplumber
 from parsers import ParserManager
+from error_handler import CustomError
 
 
 def parse_pdf():
@@ -15,16 +16,14 @@ def parse_pdf():
     root.destroy()
 
     if not file_paths:
-        print("No files selected")
-        return []
+        raise CustomError("No PDF files selected!", error_code=2)
 
     for file_path in file_paths:
         with pdfplumber.open(file_path) as pdf:
             current_parser = ParserManager.find_parser(pdf)
 
             if current_parser is None:
-                print(f"No parser found for {file_path}!")
-                continue
+                raise CustomError(f"File not found for {file_path}", error_code=3)
 
             current_parser.parse(pdf)
 

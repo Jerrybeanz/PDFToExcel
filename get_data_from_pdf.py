@@ -2,6 +2,7 @@ import xlwings as xw
 import pandas as pd
 import sys
 from parse_pdf import parse_pdf
+from error_handler import CustomError
 
 
 def get_data_from_pdf():
@@ -18,7 +19,11 @@ def get_data_from_pdf():
         xw.Book("template.xlsm").set_mock_caller()
         wb = xw.Book.caller()
 
-    tables = parse_pdf()
+    try:
+        tables = parse_pdf()
+    except CustomError as e:
+        print(e.message)
+        sys.exit(e.error_code)
 
     for table in tables:
         df = pd.DataFrame(table.rows, columns=table.headers)
