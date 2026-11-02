@@ -46,11 +46,16 @@ def get_data_from_pdf():
 
         # Create new sheet and table
         if not found_table:
-            if table.name not in wb.sheets:
-                sheet = wb.sheets.add(table.name)
-            else:
-                sheet = wb.sheets[table.name]
+            new_sheet_name = table.name # Use table name as sheet name
+            i = 1
+            existing_sheet_names = set(sheet.name for sheet in wb.sheets)
 
+            # Avoid overwriting existing sheet
+            while new_sheet_name in existing_sheet_names:
+                new_sheet_name = f"{table.name} {i}"
+                i += 1
+
+            sheet = wb.sheets.add(new_sheet_name)
             sheet.clear()
             sheet.range('A1').options(index=False).value = df
 
