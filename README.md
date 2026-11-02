@@ -41,7 +41,7 @@ Below are the mappings:
 ### How it works ###
 The macro calls and runs the exe file. Processing is done by the exe file behind the scenes.  
 The exe file requires an active Excel workbook instance and should not be run directly (except before the first use case).  
-Run it directly will modify the current active Excel workbook instance, which may cause unexpected results.
+Running it directly will modify the current active Excel workbook instance, which may cause unexpected results.
 
 ### Additional Troubleshooting ###
 You may get warnings regarding the use of macros, which you can safely ignore.  
